@@ -1,0 +1,66 @@
+---
+# https://geekdudes.wordpress.com/2018/11/19/install-first-domain-controller-ad-forest-using-ansible/
+# https://medium.com/@georgimarokov/getting-started-with-ansible-and-configuring-windows-machines-f54c67e1be5c
+- name: install first domain controller
+  hosts: windows
+  vars:
+    dns_name: ad.contoso.com
+    safe_mode_password: 'Passw0rd123!'
+    win_dns_record_zone: ad2.contoso.com
+    win_dns_record_revzone: 0.0.255.in-addr.arpa
+    win_dns_record_revzone_network: 255.0.0.0/24
+  # vars_files:
+  #  - group_vars/windows/vault_win.yml
+  gather_facts: yes
+  tasks:
+    - name: install ad
+      win_feature: >
+          name=AD-Domain-Services
+          include_management_tools=yes
+          include_sub_features=yes
+          state=present
+      register: result
+    - name: install domain
+      win_domain: >
+        dns_domain_name='{{ dns_name }}'
+        safe_mode_password='{{ safe_mode_password }}'
+      register: ad
+    - name: reboot server
+      win_reboot:
+        msg: "Installing AD. Rebooting..."
+        pre_reboot_delay: 15
+      when: ad.changed
+
+    - name: Create database server alias
+      win_dns_record:
+        name: "db1"
+        type: "CNAME"
+        value: "cgyl1404p.ad.contoso.com"
+        zone: "ad.contoso.com"
+
+    - name: Create database server A record
+      win_dns_record:
+        name: "db2"
+        type: "A"
+        value: "10.0.0.123"
+        zone: "ad.contoso.com"
+        state: present
+
+    - name: Create database server PTR
+      win_dns_record:
+        name: "123"
+        type: "PTR"
+        value: "testrer.ad.contoso.com"
+        zone: "0.0.10.in-addr.arpa"
+        state: present
+
+
+    # - name: Create the forward zone
+    #   win_shell: >-
+    #     Add-DnsServerPrimaryZone -Name \
+    #     '{{ win_dns_record_zone }}' -ZoneFile '{{ win_dns_record_zone}}.dns'
+    #
+    # - name: Create the reverse zone
+    #   win_shell: >-
+    #     Add-DnsServerPrimaryZone -NetworkID \
+    #     '{{ win_dns_record_revzone_network }}' -ZoneFile '{{ win_dns_record_revzone}}.dns'

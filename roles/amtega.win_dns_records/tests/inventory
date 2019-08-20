@@ -1,0 +1,28 @@
+---
+
+all:
+  vars:
+    # win_dns_record_zone: ad.contoso.com
+    # win_dns_record_revzone: 0.168.192.in-addr.arpa
+    # win_dns_record_revzone_network: 255.255.255.0/24
+    win_dns_record_zone: test.ansible.local
+    win_dns_record_revzone: 0.0.255.in-addr.arpa
+    win_dns_record_revzone_network: 255.0.0.0/24
+  children:
+    windows:
+      hosts:
+        WindowsServer:
+          ansible_host: 192.168.0.30
+      vars:
+        ansible_user: vagrant
+        ansible_password: vagrant
+        ansible_port: 5985
+        ansible_connection: winrm
+        ansible_winrm_transport: basic
+        ansible_winrm_server_cert_validation: ignore
+    winrm:
+      children:
+        windows:
+    testhost:
+      children:
+        windows:

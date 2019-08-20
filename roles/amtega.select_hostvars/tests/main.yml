@@ -1,0 +1,86 @@
+---
+# Tasks for testing role
+
+- name: Run idempotence test
+  hosts: localhost
+  roles:
+    - role: amtega.docker_presets
+      docker_presets_images_json_query: >-
+        [? starts_with(name, `centos-6`)
+           || starts_with(name, `centos-7`)
+           || starts_with(name, `fedora-29`)
+           || starts_with(name, `fedora-30`) ]
+
+    - role: amtega.docker_sandbox
+      docker_sandbox_state: started
+      docker_sandbox_idempotence_test: false
+  tags:
+    - sandbox
+
+- name: Test select_hostvars role
+  hosts: docker_sandbox_containers
+  roles:
+    - role: amtega.select_hostvars
+      vars:
+        select_hostvars_query:
+          pattern: "ansible_devices"
+          host_pattern: ".*"
+          host_exclude_pattern: "mybadhost.*"
+          attributes:
+            - dm-0
+          fact_name: devices_facts_list
+          output_type: list
+
+    - role: amtega.select_hostvars
+      vars:
+        select_hostvars_query:
+          pattern: "ansible_devices"
+          host_pattern: ".*"
+          host_exclude_pattern: "mybadhost.*"
+          attributes:
+            - dm-0
+          fact_name: devices_facts_dict
+          output_type: dict
+
+    - role: amtega.select_hostvars
+      vars:
+        select_hostvars_query:
+          scope: all
+          pattern: "ansible_devices"
+          host_pattern: ".*"
+          host_exclude_pattern: "mybadhost.*"
+          attributes:
+            - dm-0
+          fact_name: devices_facts_dict_all
+          output_type: dict
+
+    - role: amtega.select_hostvars
+      vars:
+        select_hostvars_query:
+          pattern: "ansible_default"
+          exclude_pattern: "ansible_default_ipv6"
+          host_pattern: ".*"
+          host_exclude_pattern: "mybadhost.*"
+          fact_name: defaults_facts_dict
+          output_type: dict
+  tasks:
+    - name: Check that returned fact is correct
+      assert:
+        that:
+          - devices_facts_list is defined
+          - devices_facts_dict is defined
+          - devices_facts_dict_all is defined
+          - devices_facts_list.0['dm-0'] is defined
+          - devices_facts_dict.ansible_devices['dm-0'] is defined
+          - devices_facts_dict_all.ansible_devices['dm-0'] is defined
+          - defaults_facts_dict.ansible_default_ipv4 is defined
+          - defaults_facts_dict.ansible_default_ipv6 is not defined
+
+- name: Cleanup docker sandbox
+  hosts: localhost
+  roles:
+    - role: amtega.docker_sandbox
+      docker_sandbox_state: absent
+  tags:
+    - sandbox
+    - cleanup

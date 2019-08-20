@@ -1,0 +1,8 @@
+ad  ansible_host=192.168.0.30
+
+[all:vars]
+ansible_user=vagrant
+ansible_password=vagrant
+ansible_port= 5985
+ansible_connection= winrm
+ansible_winrm_transport= basic
